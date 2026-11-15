@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weather</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.4rem; margin: 0 0 16px; }
+  form { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+  input, select, button { font:inherit; padding:10px 12px; border-radius:8px; border:1px solid #334155; background:var(--card); color:var(--text); }
+  input { flex:1; min-width:160px; }
+  button { background:var(--accent); color:#06202e; border:none; font-weight:600; cursor:pointer; }
+  .card { background:var(--card); border-radius:14px; padding:20px; margin-bottom:16px; }
+  .place { color:var(--muted); margin:0 0 4px; }
+  .temp { font-size:3.2rem; font-weight:700; margin:0; }
+  .cond { font-size:1.1rem; margin:0 0 14px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; }
+  .stat { background:#0f172a; border-radius:10px; padding:10px 12px; }
+  .stat span { display:block; color:var(--muted); font-size:.8rem; }
+  .days { display:grid; gap:10px; }
+  .day { display:grid; grid-template-columns: 90px 1fr auto; gap:12px; align-items:center; }
+  .day small { color:var(--muted); }
+  #msg { color:#fca5a5; min-height:1.2em; }
+  h2 { font-size:1rem; margin:0 0 12px; color:var(--muted); font-weight:600; }
+  .hours { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; }
+  .hour { min-width:64px; text-align:center; background:#0f172a; border-radius:10px; padding:10px 6px; }
+  .hour small { display:block; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Weather</h1>
+  <form id="form">
+    <input id="city" value="Semarang" placeholder="Enter a city" required>
+    <select id="units">
+      <option value="metric">°C</option>
+      <option value="imperial">°F</option>
+    </select>
+    <button>Search</button>
+  </form>
+  <div id="msg"></div>
+  <div id="out"></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+
+async function load() {
+  const city = $("city").value.trim();
+  const units = $("units").value;
+  const t = units === "metric" ? "°C" : "°F";
+  const w = units === "metric" ? "km/h" : "mph";
+  const p = units === "metric" ? "mm" : "in";
+  $("msg").textContent = "Loading…";
+  try {
+    const res = await fetch(`/weather?city=${encodeURIComponent(city)}&days=5&units=${units}`);
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || "Request failed");
+    const c = d.current, loc = d.location;
+    $("msg").textContent = "";
+    $("out").innerHTML = `
+      <div class="card">
+        <p class="place">${[loc.name, loc.region, loc.country].filter(Boolean).join(", ")}</p>
+        <p class="temp">${Math.round(c.temperature)}${t}</p>
+        <p class="cond">${c.condition} · feels like ${Math.round(c.feels_like)}${t}</p>
+        <div class="grid">
+          <div class="stat"><span>Humidity</span>${c.humidity_percent}%</div>
+          <div class="stat"><span>Wind</span>${c.wind_speed} ${w}</div>
+          <div class="stat"><span>Precipitation</span>${c.precipitation} ${p}</div>
+          <div class="stat"><span>Updated</span>${c.time.replace("T", " ")}</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Next 24 hours</h2>
+        <div class="hours">
+          ${d.hourly.map(h => `
+            <div class="hour">
+              <small>${h.time.slice(11, 16)}</small>
+              <strong>${Math.round(h.temperature)}°</strong>
+              <small>${h.precipitation_probability_percent}%</small>
+            </div>`).join("")}
+        </div>
+      </div>
+      <div class="card days">
+        ${d.daily.map(x => `
+          <div class="day">
+            <strong>${new Date(x.date + "T00:00").toLocaleDateString(undefined, {weekday:"short", day:"numeric", month:"short"})}</strong>
+            <span>${x.condition}<br><small>${x.precipitation_probability_percent}% rain · ${x.precipitation_sum} ${p}</small></span>
+            <span>${Math.round(x.temp_max)}° / ${Math.round(x.temp_min)}°</span>
+          </div>`).join("")}
+      </div>`;
+  } catch (e) {
+    $("msg").textContent = e.message;
+  }
+}
+
+$("form").addEventListener("submit", e => { e.preventDefault(); load(); });
+$("units").addEventListener("change", load);
+load();
+</script>
+</body>
+</html>
