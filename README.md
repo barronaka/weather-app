@@ -1,7 +1,7 @@
 # Weather API
 
 A small FastAPI service that returns real-time weather and a daily forecast using
-[Open-Meteo](https://open-meteo.com) (free, no API key).
+[Open-Meteo].
 
 ## Run
 
